@@ -1,0 +1,17 @@
+[Unit]
+Description=Sunergy Edge Node — Modbus TCP to Monad relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sunergy
+WorkingDirectory=/opt/sunergy-edge
+ExecStart=/opt/sunergy-edge/venv/bin/python -m sunergy_edge.main -c /opt/sunergy-edge/config.yaml --state /var/lib/sunergy-edge/state.json
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

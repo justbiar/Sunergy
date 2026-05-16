@@ -60,6 +60,14 @@ export function Nav({ view, setView = () => {} }: any) {
           {view === 'landing' ? (
             <React.Fragment>
               <button className="btn btn-quiet" onClick={() => router.push('/app')}>{t.nav_dashboard}</button>
+              {isConnected ? (
+                <button className="btn btn-ghost btn-sm" onClick={() => setWalletOpen(true)}>
+                  <span style={{ width: 8, height: 8, borderRadius: 99, background: '#1f8a5b', boxShadow: '0 0 0 3px rgba(31,138,91,0.18)' }} />
+                  {address?.slice(0, 6) + '...' + address?.slice(-4)}
+                </button>
+              ) : (
+                <button className="btn btn-ghost btn-sm" onClick={() => setWalletOpen(true)}>{t.nav_connect}</button>
+              )}
               <button className="btn btn-primary btn-sm" onClick={() => router.push('/app')}>{t.nav_launch} <Arrow color="#f6f3f1" /></button>
             </React.Fragment>
           ) : (
@@ -233,7 +241,7 @@ export function Footer() {
             <h4>{t.footer_protocol}</h4>
             <ul>
               <li><a href="#">Whitepaper</a></li>
-              <li><a href="#">SNR Tokenomics</a></li>
+              <li><a href="#">SUN Tokenomics</a></li>
               <li><a href="#">Carbon Registry</a></li>
               <li><a href="#">Audits</a></li>
             </ul>

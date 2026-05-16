@@ -1,13 +1,18 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useBlockNumber } from 'wagmi';
 import { useI18n } from './I18nProvider';
-import { Tag, Arrow, CountUp, SectionHead, Sparkline } from './SharedUI';
+import { Tag, Arrow, CountUp, SectionHead } from './SharedUI';
+import { useSolarSim } from '@/lib/solarSim';
 import { useRouter } from 'next/navigation';
 
 export function HeroOrb() {
   const { t } = useI18n();
   const router = useRouter();
+  const { data: blockNumber } = useBlockNumber({ watch: true });
+  const sim = useSolarSim();
+  const totalKwh = sim.totalKwh;
   return (
     <div style={{ position: 'relative', padding: '80px 0 100px', overflow: 'hidden' }}>
       <div aria-hidden="true" style={{
@@ -45,9 +50,9 @@ export function HeroOrb() {
         </div>
 
         <div style={{ marginTop: 80, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, maxWidth: 880 }}>
-          <LiveCaption label={t.hero_caption_live} value="block #4,812,991" status />
-          <LiveCaption label={t.hero_caption_proof} value="0x7f2c…a01b" mono />
-          <LiveCaption label={t.hero_caption_kwh} value={<CountUp to={184221} />} />
+          <LiveCaption label={t.hero_caption_live} value={blockNumber ? `block #${blockNumber.toLocaleString('en-US')}` : 'Modbus TCP · sim'} status />
+          <LiveCaption label={t.hero_caption_proof} value={`${sim.activeFarms} farms · ${sim.farms.map(f => f.farm.country).join(' · ')}`} mono />
+          <LiveCaption label={t.hero_caption_kwh} value={<CountUp to={sim.last24hKwh} format={(v: number) => Math.round(v).toLocaleString('en-US')} />} />
         </div>
       </div>
     </div>
@@ -73,17 +78,21 @@ function LiveCaption({ label, value, status, mono }: any) {
 
 export function StatsSection() {
   const { t } = useI18n();
+  const sim = useSolarSim();
+  const capacityKw = sim.farms.reduce((a, f) => a + f.farm.capacityKw, 0);
+
   return (
     <section id="protocol" className="section">
       <div className="wrap">
         <SectionHead eyebrow={t.stats_eyebrow} title={t.stats_title} sub={t.stats_sub} />
         <div style={{ marginTop: 64, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-          <StatCard label={t.stat_farms} value={<CountUp to={3284} />} hint="+128 this week" />
-          <StatCard label={t.stat_kwh} value={<CountUp to={28471920} format={(v: number) => Math.round(v).toLocaleString('en-US')} />} hint="≈ 11,890 tCO₂ avoided" />
-          <StatCard label={t.stat_credits} value={<CountUp to={11890} />} hint="ERC-1155 · retroactive retire" />
+          <StatCard label={t.stat_farms} value={<CountUp to={sim.activeFarms} />} hint={`${capacityKw.toLocaleString('en-US')} kWp installed`} />
+          <StatCard label={t.stat_kwh}   value={<CountUp to={sim.totalKwh} format={(v: number) => Math.round(v).toLocaleString('en-US')} />} hint="last 7 days · Open-Meteo PV model" />
+          <StatCard label="SUN minted"   value={<CountUp to={sim.totalSun} format={(v: number) => v.toFixed(1)} />} hint="1 kWh → 1 SUN" />
         </div>
         <div className="t-caption faint" style={{ marginTop: 24, fontFamily: 'var(--font-mono)', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <span className="tag-dot live" />{t.stats_updated}
+          <span className="tag-dot live" />
+          {sim.loading ? 'Streaming Modbus TCP feed…' : sim.error ? `Feed error: ${sim.error}` : `Simulated · Modbus TCP feed via Open-Meteo · ${sim.activeFarms} sites`}
         </div>
       </div>
     </section>
@@ -220,15 +229,9 @@ function MonadGrid() {
 }
 
 function CarbonStrip() {
-  const tokens = [
-    { id: '#0421', mwh: '1.0', region: 'TR' },
-    { id: '#0420', mwh: '1.0', region: 'ES' },
-    { id: '#0419', mwh: '1.0', region: 'IN' },
-    { id: '#0418', mwh: '1.0', region: 'TR' },
-  ];
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-      {tokens.map((tk, i) => (
+      {Array.from({ length: 4 }).map((_, i) => (
         <div key={i} style={{
           aspectRatio: '3/4',
           borderRadius: 16,
@@ -239,10 +242,7 @@ function CarbonStrip() {
           border: '1px solid rgba(0,0,0,0.15)',
         }}>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' }}>CCNFT</div>
-          <div>
-            <div style={{ fontFamily: 'var(--font-serif)', fontSize: 22, letterSpacing: '-0.02em', lineHeight: 1 }}>{tk.id}</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 4, opacity: 0.7 }}>{tk.mwh} MWh · {tk.region}</div>
-          </div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, opacity: 0.7 }}>ERC-1155</div>
         </div>
       ))}
     </div>
@@ -252,6 +252,10 @@ function CarbonStrip() {
 export function CtaSection({ goDash }: any) {
   const { t } = useI18n();
   const router = useRouter();
+  const sim = useSolarSim();
+  const sample = sim.farms[0];
+  const sampleKwh = sample?.lastHourKwh ?? 0;
+  const sampleSun = sampleKwh * (sample?.farm.sunPerKwh ?? 1);
   return (
     <section className="section" id="docs">
       <div className="wrap">
@@ -273,14 +277,14 @@ export function CtaSection({ goDash }: any) {
               <span style={{ width: 8, height: 8, borderRadius: 99, background: '#444' }} />
               <span style={{ width: 8, height: 8, borderRadius: 99, background: '#444' }} />
             </div>
-            <div><span className="c">{`# ssh edge.local`}</span></div>
-            <div><span className="k">$</span> sunergy proof --interval 5m</div>
-            <div><span className="c">{`> reading modbus tcp://192.168.1.42`}</span></div>
+            <div><span className="c">{`# ssh edge.${sample?.farm.country.toLowerCase() ?? 'tr'}.sunergy.io`}</span></div>
+            <div><span className="k">$</span> sunergy proof --interval 1h</div>
+            <div><span className="c">{`> reading modbus tcp://${sample?.farm.name ?? 'farm'}`}</span></div>
             <div><span className="c">{`> sp1 prove --input gen.bin`}</span></div>
-            <div><span className="ok">✓</span> proof <span className="v">0x7f2c…a01b</span></div>
+            <div><span className="ok">✓</span> proof <span className="v">{sample ? `${sampleKwh.toFixed(2)} kWh` : '…'}</span></div>
             <div><span className="ok">✓</span> relayed via pimlico</div>
-            <div><span className="ok">✓</span> verified <span className="v">block #4,812,991</span></div>
-            <div><span className="k">+</span> credited <span className="v">12.4 SNR</span></div>
+            <div><span className="ok">✓</span> verified on Monad</div>
+            <div><span className="k">+</span> credited <span className="v">{sampleSun.toFixed(2)} SUN</span></div>
           </div>
         </div>
       </div>

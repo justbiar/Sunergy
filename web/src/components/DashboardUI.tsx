@@ -4,9 +4,10 @@ import React, { useState, useMemo } from 'react';
 import { useAccount, useReadContracts, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { formatEther, keccak256, encodeAbiParameters, parseAbiParameters } from "viem";
 import { CONTRACTS, FARM_REGISTRY_ABI, REWARDS_ABI, ERC20_ABI } from "@/lib/contracts";
+import { useSolarSim, buildActivity, type FarmSeries } from '@/lib/solarSim';
 
 import { useI18n } from './I18nProvider';
-import { Nav, Footer, Tag, Arrow, CountUp, Modal, Sparkline, WalletModal } from './SharedUI';
+import { Nav, Footer, Tag, Arrow, CountUp, Modal, WalletModal } from './SharedUI';
 
 export function Dashboard() {
   const { t } = useI18n();
@@ -42,82 +43,102 @@ export function Dashboard() {
     query: { enabled: !!address },
   });
 
-  // Mocking the lifetime and pending since we only get a list of IDs right now.
-  // Ideally, we'd do a multicall to get each farm's details.
-  const totals = useMemo(() => ({
-    lifetime: Number(globalData?.[2]?.result || 0),
-    pending: 0, // Mocked for now
-    pendingCarbon: 0,
-    snrEarned: Number(globalData?.[3]?.result ? formatEther(globalData[3].result as bigint) : 0),
-  }), [globalData]);
+  const farmIds = (myFarms as `0x${string}`[] | undefined) ?? [];
 
-  // Mock activity
-  const activity = useMemo(() => [
-    { kind: 'proof', farm: 'Konya Field 07', kwh: 12.4, time: '2 min ago', hash: '0x7f2c…a01b' },
-    { kind: 'proof', farm: 'Murcia 12', kwh: 8.1, time: '6 min ago', hash: '0x9d31…bc42' },
-    { kind: 'register', farm: 'Antalya 02', time: '3 days ago', hash: '0x1ee0…02cd' },
-  ], []);
+  const { data: pendingPerFarm } = useReadContracts({
+    contracts: farmIds.map((id) => ({
+      address: CONTRACTS.rewards,
+      abi: REWARDS_ABI,
+      functionName: 'pendingRewards' as const,
+      args: [id] as const,
+    })),
+    query: { enabled: farmIds.length > 0 },
+  });
+
+  const sim = useSolarSim();
+
+  const totals = useMemo(() => {
+    // Use the simulated network as the live demo source.
+    // Real on-chain reads still bind when farms are registered.
+    let pending = 0n;
+    let pendingCarbon = 0n;
+    if (pendingPerFarm) {
+      for (const row of pendingPerFarm) {
+        const r = row?.result as readonly [bigint, bigint] | undefined;
+        if (r) { pending += r[0]; pendingCarbon += r[1]; }
+      }
+    }
+    const onChainPending = Number(formatEther(pending));
+    const onChainLifetime = Number(globalData?.[2]?.result || 0);
+    const simPending = sim.farms.reduce((a, f) => a + f.pendingSun, 0);
+    const simCarbon  = sim.totalKwh / 1000; // 1 MWh per 1000 kWh
+    return {
+      lifetime: onChainLifetime || sim.totalKwh,
+      pending: onChainPending || simPending,
+      pendingCarbon: Number(pendingCarbon) || simCarbon,
+      snrEarned: Number(globalData?.[3]?.result ? formatEther(globalData[3].result as bigint) : 0) || sim.totalSun,
+    };
+  }, [globalData, pendingPerFarm, sim]);
+
+  const activity = useMemo(() => buildActivity(sim, 8), [sim]);
 
   const openClaim = (id: string) => { setClaimTarget(id); setClaimOpen(true); };
   const onConnect = () => setWalletOpen(true);
 
-  if (!isConnected) {
-    return (
-      <div className="wrap" style={{ padding: '120px 0', display: 'grid', placeItems: 'center', minHeight: '60vh' }}>
-        <div style={{ maxWidth: 520, textAlign: 'center' }}>
-          <Tag variant="soft"><span className="tag-dot" style={{ background: '#1f8a5b' }} />Sunergy app</Tag>
-          <h1 className="font-serif" style={{ fontSize: 56, letterSpacing: '-0.03em', margin: '24px 0 16px' }}>
-            Connect to see your farms.
-          </h1>
-          <p className="muted" style={{ fontSize: 16, }}>
-            Use any EVM-compatible wallet. Sunergy is non-custodial — your farms, your keys, your kWh.
-          </p>
-          <button className="btn btn-primary" style={{ marginTop: 32 }} onClick={onConnect}>{t.nav_connect} <Arrow color="#f6f3f1" /></button>
-        </div>
-        <WalletModal open={walletOpen} onClose={() => setWalletOpen(false)} isConnected={isConnected} />
-      </div>
-    );
-  }
+  const headerTitle = isConnected
+    ? `${address?.slice(0, 6)}...${address?.slice(-4)}`
+    : "Network simulation";
 
   return (
     <div className="wrap" style={{ padding: '40px 0 80px' }}>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 32 }}>
         <div>
-          <div className="t-caption faint" style={{ marginBottom: 8 }}>{t.dash_welcome}</div>
+          <div className="t-caption faint" style={{ marginBottom: 8 }}>
+            {isConnected ? t.dash_welcome : (sim.loading ? 'Streaming Modbus TCP feed…' : sim.error ? `Feed error: ${sim.error}` : `Simulated · Modbus TCP feed via Open-Meteo · ${sim.activeFarms} sites`)}
+          </div>
           <h1 className="font-serif" style={{ fontSize: 48, letterSpacing: '-0.03em', margin: 0, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-            {address?.slice(0, 6)}...{address?.slice(-4)}
+            {headerTitle}
           </h1>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn btn-ghost" onClick={() => setRegisterOpen(true)}>{t.dash_register} <span style={{ fontSize: 16, lineHeight: 0 }}>+</span></button>
-          <button className="btn btn-primary" onClick={() => openClaim('all')} disabled={totals.pending === 0}>
-            {t.dash_claim_all} · {totals.pending.toFixed(1)} SNR <Arrow color="#f6f3f1" />
-          </button>
+          {isConnected ? (
+            <>
+              <button className="btn btn-ghost" onClick={() => setRegisterOpen(true)}>{t.dash_register} <span style={{ fontSize: 16, lineHeight: 0 }}>+</span></button>
+              <button className="btn btn-primary" onClick={() => openClaim('all')} disabled={totals.pending === 0}>
+                {t.dash_claim_all} · {totals.pending.toFixed(1)} SUN <Arrow color="#f6f3f1" />
+              </button>
+            </>
+          ) : (
+            <button className="btn btn-primary" onClick={onConnect}>{t.nav_connect} <Arrow color="#f6f3f1" /></button>
+          )}
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, marginBottom: 16 }}>
         <KpiCard label={t.dash_total} value={<CountUp to={totals.lifetime} format={(v: number) => Math.round(v).toLocaleString('en-US')} />} suffix="kWh" />
-        <KpiCard label={t.dash_snr} value={<CountUp to={snrBalance ? Number(formatEther(snrBalance as bigint)) : 0} format={(v: number) => v.toFixed(1)} />} suffix="SNR" />
-        <KpiCard label={t.dash_pending} value={<CountUp to={totals.pending} format={(v: number) => v.toFixed(1)} />} suffix="SNR" highlight />
+        <KpiCard label={t.dash_snr} value={<CountUp to={isConnected && snrBalance ? Number(formatEther(snrBalance as bigint)) : totals.snrEarned} format={(v: number) => v.toFixed(1)} />} suffix="SUN" />
+        <KpiCard label={t.dash_pending} value={<CountUp to={totals.pending} format={(v: number) => v.toFixed(1)} />} suffix="SUN" highlight />
         <KpiCard label={t.dash_carbon} value={<CountUp to={totals.pendingCarbon} format={(v: number) => v.toFixed(2)} />} suffix="MWh" />
       </div>
 
       <div className="dash-hero" style={{ marginBottom: 32 }}>
-        <ProductionChart />
+        <ProductionChart sim={sim} />
         <ActivityFeed activity={activity} />
       </div>
 
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
         <h2 className="font-serif" style={{ fontSize: 32, letterSpacing: '-0.02em', margin: 0 }}>{t.dash_farms}</h2>
-        <span className="t-body-sm faint">{myFarms ? (myFarms as string[]).length : 0} farms</span>
+        <span className="t-body-sm faint">{isConnected && farmIds.length > 0 ? `${farmIds.length} farms (yours) · ${sim.farms.length} simulated` : `${sim.farms.length} simulated sites`}</span>
       </div>
 
       <div className="farm-grid">
+        {sim.farms.map((f) => (
+          <SimFarmCard key={f.farm.id} f={f} onClaim={() => openClaim(f.farm.id)} />
+        ))}
         {(myFarms as string[])?.map((farmId) => (
           <FarmCardNode key={farmId} farmId={farmId} onClaim={() => openClaim(farmId)} />
         ))}
-        <AddFarmCard onClick={() => setRegisterOpen(true)} />
+        {isConnected && <AddFarmCard onClick={() => setRegisterOpen(true)} />}
       </div>
 
       <RegisterModal open={registerOpen} onClose={() => setRegisterOpen(false)} />
@@ -185,8 +206,6 @@ function FarmCardNode({ farmId, onClaim }: any) {
         </span>
       </div>
 
-      <Sparkline data={[12, 18, 22, 19, 24, 28, 30, 26, 32, 38, 42, 40, 45, 52, 56, 58, 62, 68, 72, 76]} width={520} height={48} />
-
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         <div>
           <div className="kpi-label">{t.farm_lifetime}</div>
@@ -197,7 +216,7 @@ function FarmCardNode({ farmId, onClaim }: any) {
         <div>
           <div className="kpi-label">{t.farm_pending}</div>
           <div style={{ fontFamily: 'var(--font-serif)', fontSize: 26, letterSpacing: '-0.025em', lineHeight: 1 }}>
-            {pending.toFixed(1)}<small style={{ fontFamily: 'var(--font-mono)', fontSize: 11, marginLeft: 6, color: 'var(--color-pale-stone)' }}>SNR</small>
+            {pending.toFixed(1)}<small style={{ fontFamily: 'var(--font-mono)', fontSize: 11, marginLeft: 6, color: 'var(--color-pale-stone)' }}>SUN</small>
           </div>
         </div>
       </div>
@@ -227,43 +246,104 @@ function AddFarmCard({ onClick }: any) {
   );
 }
 
-function ProductionChart() {
+function ProductionChart({ sim }: { sim: ReturnType<typeof useSolarSim> }) {
   const { t } = useI18n();
-  const data = useMemo(() => Array.from({ length: 7 * 24 }, (_, i) => {
-    const hour = i % 24;
-    const solar = Math.max(0, Math.sin((hour - 6) / 18 * Math.PI)) ** 1.3;
-    const noise = 0.6 + Math.random() * 0.4;
-    return solar * noise;
-  }), []);
-  const max = Math.max(...data) || 1;
+  const data = sim.hourlyAggregate;
+  const max = data.length ? Math.max(...data) || 1 : 1;
   return (
     <div className="card" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 16, minHeight: 280 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
         <div>
           <h3 className="font-serif" style={{ fontSize: 26, letterSpacing: '-0.025em', margin: 0, }}>{t.dash_chart_title}</h3>
-          <p className="t-body-sm muted" style={{ margin: '6px 0 0' }}>{t.dash_chart_sub}</p>
-        </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button className="btn btn-quiet btn-sm">24h</button>
-          <button className="btn btn-quiet btn-sm" style={{ background: 'rgba(0,0,0,0.06)' }}>7d</button>
-          <button className="btn btn-quiet btn-sm">30d</button>
+          <p className="t-body-sm muted" style={{ margin: '6px 0 0' }}>{sim.activeFarms} sites · last 7 days · Open-Meteo PV model</p>
         </div>
       </div>
-      <div style={{ flex: 1, display: 'flex', gap: 2, alignItems: 'flex-end', minHeight: 140 }}>
-        {data.map((v, i) => (
-          <div key={i} style={{
-            flex: 1,
-            height: `${Math.max(2, (v / max) * 100)}%`,
-            background: i >= data.length - 24 ? 'var(--accent, var(--color-atmosphere-wash))' : 'var(--color-off-black)',
-            opacity: i >= data.length - 24 ? 1 : 0.85,
-            borderRadius: 2,
-            minWidth: 2,
-          }} />
-        ))}
+      {data.length === 0 ? (
+        <div style={{ flex: 1, display: 'grid', placeItems: 'center', minHeight: 180 }}>
+          <div className="t-body-sm faint">{sim.loading ? 'Loading…' : sim.error ?? 'No data.'}</div>
+        </div>
+      ) : (
+        <>
+          <div style={{ flex: 1, display: 'flex', gap: 2, alignItems: 'flex-end', minHeight: 140 }}>
+            {data.map((v, i) => (
+              <div key={i} style={{
+                flex: 1,
+                height: `${Math.max(2, (v / max) * 100)}%`,
+                background: i >= data.length - 24 ? 'var(--accent, var(--color-atmosphere-wash))' : 'var(--color-off-black)',
+                opacity: i >= data.length - 24 ? 1 : 0.85,
+                borderRadius: 2,
+                minWidth: 2,
+              }} />
+            ))}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.06em', color: 'var(--color-faint-text)', textTransform: 'uppercase' }}>
+            <span>−7d</span><span>−6d</span><span>−5d</span><span>−4d</span><span>−3d</span><span>−2d</span><span>today</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function SimFarmCard({ f, onClaim }: { f: FarmSeries; onClaim: () => void }) {
+  const { t } = useI18n();
+  const last24 = f.hours.slice(-24).reduce((a, b) => a + b, 0);
+  return (
+    <div style={{
+      border: '1px solid var(--color-hairline)',
+      borderRadius: 24, padding: 24,
+      display: 'flex', flexDirection: 'column', gap: 20,
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div className="t-caption faint" style={{ marginBottom: 6 }}>{f.farm.id.slice(0, 10)}…{f.farm.id.slice(-6)}</div>
+          <h3 className="font-serif" style={{ fontSize: 28, letterSpacing: '-0.025em', margin: 0 }}>{f.farm.name}</h3>
+          <div className="t-body-sm muted" style={{ marginTop: 4 }}>{f.farm.country} · {f.farm.capacityKw.toLocaleString('en-US')} kWp</div>
+        </div>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+          <span style={{ width: 8, height: 8, borderRadius: 99, background: '#1f8a5b', boxShadow: `0 0 0 3px #1f8a5b20` }} />
+          {f.lastHourKwh > 0 ? 'Producing' : 'Idle'}
+        </span>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.06em', color: 'var(--color-faint-text)', textTransform: 'uppercase' }}>
-        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun · today</span>
+
+      <MiniBars data={f.hours.slice(-24)} />
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div>
+          <div className="kpi-label">last 24h</div>
+          <div style={{ fontFamily: 'var(--font-serif)', fontSize: 26, letterSpacing: '-0.025em', lineHeight: 1 }}>
+            {Math.round(last24).toLocaleString('en-US')}<small style={{ fontFamily: 'var(--font-mono)', fontSize: 11, marginLeft: 6, color: 'var(--color-pale-stone)' }}>kWh</small>
+          </div>
+        </div>
+        <div>
+          <div className="kpi-label">{t.farm_pending}</div>
+          <div style={{ fontFamily: 'var(--font-serif)', fontSize: 26, letterSpacing: '-0.025em', lineHeight: 1 }}>
+            {f.pendingSun.toFixed(1)}<small style={{ fontFamily: 'var(--font-mono)', fontSize: 11, marginLeft: 6, color: 'var(--color-pale-stone)' }}>SUN</small>
+          </div>
+        </div>
       </div>
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
+        <button className="btn btn-ghost btn-sm" style={{ flex: 1 }}>{t.farm_view}</button>
+        <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={onClaim}>{t.dash_claim} <Arrow color="#f6f3f1" /></button>
+      </div>
+    </div>
+  );
+}
+
+function MiniBars({ data }: { data: number[] }) {
+  const max = Math.max(...data, 0.001);
+  return (
+    <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', height: 36 }}>
+      {data.map((v, i) => (
+        <div key={i} style={{
+          flex: 1,
+          height: `${Math.max(2, (v / max) * 100)}%`,
+          background: 'var(--color-off-black)',
+          opacity: 0.7,
+          borderRadius: 1.5,
+        }} />
+      ))}
     </div>
   );
 }
@@ -279,6 +359,9 @@ function ActivityFeed({ activity }: any) {
         <p className="t-body-sm muted" style={{ margin: '6px 0 0' }}>{t.activity_sub}</p>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0, maxHeight: 240, overflowY: 'auto', margin: '0 -8px' }}>
+        {activity.length === 0 && (
+          <div className="t-body-sm faint" style={{ padding: '24px 8px' }}>No activity yet.</div>
+        )}
         {activity.slice(0, 8).map((a: any, i: number) => (
           <div key={i} style={{
             display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 12, alignItems: 'center',
@@ -288,7 +371,7 @@ function ActivityFeed({ activity }: any) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
               <span style={{ fontSize: 13, letterSpacing: '-0.01em' }}>{labelFor(a.kind)} · <span className="muted">{a.farm}</span></span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-faint-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {a.hash}{a.kwh ? ` · ${a.kwh} kWh` : ''}{a.snr ? ` · ${a.snr.toFixed(1)} SNR` : ''}
+                {a.hash}{a.kwh ? ` · ${a.kwh} kWh` : ''}{a.sun ? ` · ${a.sun.toFixed(1)} SUN` : ''}
               </span>
             </div>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-faint-text)' }}>{a.time}</span>
@@ -427,7 +510,7 @@ function ClaimModal({ open, onClose, target, totals }: any) {
   const { writeContract, data: txHash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
-  const snr = totals.pending;
+  const sun = totals.pending;
   const carbon = totals.pendingCarbon;
 
   const confirm = () => {
@@ -449,7 +532,7 @@ function ClaimModal({ open, onClose, target, totals }: any) {
       <p className="t-body-sm muted" style={{ margin: '0 0 24px' }}>{t.claim_sub}{target ? ` · ${target.slice(0,6)}` : ''}</p>
 
       <div style={{ border: '1px solid var(--color-hairline)', borderRadius: 18, overflow: 'hidden', marginBottom: 16 }}>
-        <ClaimRow label={t.claim_snr} value={`${snr.toFixed(1)} SNR`} />
+        <ClaimRow label={t.claim_snr} value={`${sun.toFixed(1)} SUN`} />
         <ClaimRow label={t.claim_carbon} value={`${carbon.toFixed(2)} MWh · ERC-1155`} />
         <ClaimRow label={t.claim_gas} value={t.claim_gas_v} mono />
       </div>

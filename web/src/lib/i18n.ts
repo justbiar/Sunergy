@@ -10,7 +10,7 @@ const I18N: Record<string, any> = {
     nav_launch: 'Launch app',
     nav_back_home: 'Home',
     nav_connect: 'Connect wallet',
-    banner_text: 'Sunergy mainnet alpha is live on Monad — register your farm to start earning SNR.',
+    banner_text: 'Sunergy mainnet alpha is live on Monad — register your farm to start earning SUN.',
     banner_cta: 'Read the post',
 
     // Hero
@@ -18,7 +18,7 @@ const I18N: Record<string, any> = {
     hero_title_a: 'Turn sunlight into verifiable rewards.',
     hero_title_b: 'Every kilowatt-hour, on-chain. Zero gas. Zero trust.',
     hero_title_c: 'A protocol for the people powering the grid.',
-    hero_sub: 'Sunergy is a decentralized protocol that verifies solar generation with zero-knowledge proofs and rewards producers in SNR tokens and ERC-1155 carbon credits — gaslessly, on Monad.',
+    hero_sub: 'Sunergy is a decentralized protocol that verifies solar generation with zero-knowledge proofs and rewards producers in SUN tokens and ERC-1155 carbon credits — gaslessly, on Monad.',
     hero_cta_primary: 'Register your farm',
     hero_cta_secondary: 'Read the whitepaper',
     hero_caption_live: 'Live · Monad mainnet',
@@ -48,7 +48,7 @@ const I18N: Record<string, any> = {
     step3_body: 'Proofs are relayed through a Pimlico Paymaster (EIP-4337). You never hold the chain\u2019s native token to participate.',
     step3_tag: 'EIP-4337 · Paymaster',
     step4_title: 'Verify on Monad',
-    step4_body: 'Monad\u2019s parallel EVM verifies thousands of proofs concurrently and credits SNR + ERC-1155 carbon credits to your farm.',
+    step4_body: 'Monad\u2019s parallel EVM verifies thousands of proofs concurrently and credits SUN + ERC-1155 carbon credits to your farm.',
     step4_tag: 'Monad · Parallel EVM',
 
     // Architecture
@@ -64,7 +64,7 @@ const I18N: Record<string, any> = {
     arch_card4_body: 'Each verified MWh mints a carbon credit NFT, retroactively retireable through partner registries.',
 
     // CTA
-    cta_title: 'Plug in. Prove generation. Earn SNR.',
+    cta_title: 'Plug in. Prove generation. Earn SUN.',
     cta_sub: 'The node ships in a 95mm enclosure. Install in 10 minutes — most of that is waiting on your inverter.',
     cta_primary: 'Order an Edge node',
     cta_secondary: 'Open the dashboard',
@@ -80,7 +80,7 @@ const I18N: Record<string, any> = {
     dash_welcome: 'Welcome back',
     dash_overview: 'Overview',
     dash_total: 'Lifetime generation',
-    dash_snr: 'SNR earned',
+    dash_snr: 'SUN earned',
     dash_pending: 'Pending rewards',
     dash_carbon: 'Carbon credits',
     dash_24h: 'Last 24h',
@@ -91,7 +91,7 @@ const I18N: Record<string, any> = {
     dash_claim_all: 'Claim all',
     dash_claim: 'Claim',
     farm_lifetime: 'Lifetime kWh',
-    farm_pending: 'Pending SNR',
+    farm_pending: 'Pending SUN',
     farm_health: 'Node health',
     farm_status_ok: 'Online',
     farm_status_warn: 'Degraded',
@@ -135,8 +135,8 @@ const I18N: Record<string, any> = {
 
     // Claim modal
     claim_title: 'Claim rewards',
-    claim_sub: 'Settle pending SNR and carbon credits to your wallet in a single transaction.',
-    claim_snr: 'SNR ready',
+    claim_sub: 'Settle pending SUN and carbon credits to your wallet in a single transaction.',
+    claim_snr: 'SUN ready',
     claim_carbon: 'Carbon credits',
     claim_gas: 'Gas',
     claim_gas_v: 'Sponsored',
@@ -155,14 +155,14 @@ const I18N: Record<string, any> = {
     nav_launch: 'Uygulamayı aç',
     nav_back_home: 'Anasayfa',
     nav_connect: 'Cüzdan bağla',
-    banner_text: 'Sunergy ana ağ alfa sürümü Monad üzerinde yayında — çiftliğini kaydet, SNR kazanmaya başla.',
+    banner_text: 'Sunergy ana ağ alfa sürümü Monad üzerinde yayında — çiftliğini kaydet, SUN kazanmaya başla.',
     banner_cta: 'Yazıyı oku',
 
     hero_eyebrow: 'DePIN · Üretim Kanıtı · Monad üzerinde',
     hero_title_a: 'Güneş ışığını doğrulanabilir ödüllere çevir.',
     hero_title_b: 'Her kilowatt-saat zincir üzerinde. Gas yok. Güven yok.',
     hero_title_c: 'Şebekeyi besleyenler için bir protokol.',
-    hero_sub: 'Sunergy, güneş üretimini sıfır-bilgi kanıtlarıyla doğrulayan ve üreticilere SNR token + ERC-1155 karbon kredisi olarak ödül veren merkeziyetsiz bir protokoldür — Monad üzerinde, gas ücreti ödemeden.',
+    hero_sub: 'Sunergy, güneş üretimini sıfır-bilgi kanıtlarıyla doğrulayan ve üreticilere SUN token + ERC-1155 karbon kredisi olarak ödül veren merkeziyetsiz bir protokoldür — Monad üzerinde, gas ücreti ödemeden.',
     hero_cta_primary: 'Çiftliğini kaydet',
     hero_cta_secondary: 'Whitepaper\u2019ı oku',
     hero_caption_live: 'Canlı · Monad ana ağı',
@@ -190,7 +190,7 @@ const I18N: Record<string, any> = {
     step3_body: 'Kanıtlar Pimlico Paymaster (EIP-4337) üzerinden iletilir. Ağın yerli token\u2019ını cüzdanında tutman gerekmez.',
     step3_tag: 'EIP-4337 · Paymaster',
     step4_title: 'Monad\u2019da doğrula',
-    step4_body: 'Monad\u2019ın paralel EVM\u2019i binlerce kanıtı eş zamanlı doğrular ve çiftliğine SNR + ERC-1155 karbon kredisi yatırır.',
+    step4_body: 'Monad\u2019ın paralel EVM\u2019i binlerce kanıtı eş zamanlı doğrular ve çiftliğine SUN + ERC-1155 karbon kredisi yatırır.',
     step4_tag: 'Monad · Paralel EVM',
 
     arch_eyebrow: 'Protokol mimarisi',
@@ -204,7 +204,7 @@ const I18N: Record<string, any> = {
     arch_card4_title: 'ERC-1155 karbon',
     arch_card4_body: 'Doğrulanan her MWh bir karbon kredisi NFT\u2019si basar; partner kayıt sistemlerinde geriye dönük emekliye ayrılabilir.',
 
-    cta_title: 'Tak. Üretimi kanıtla. SNR kazan.',
+    cta_title: 'Tak. Üretimi kanıtla. SUN kazan.',
     cta_sub: 'Düğüm 95mm muhafazada gelir. 10 dakikada kurulur — çoğu invertörü beklemekle geçer.',
     cta_primary: 'Edge düğüm sipariş ver',
     cta_secondary: 'Paneli aç',
@@ -218,7 +218,7 @@ const I18N: Record<string, any> = {
     dash_welcome: 'Tekrar hoş geldin',
     dash_overview: 'Genel bakış',
     dash_total: 'Ömür boyu üretim',
-    dash_snr: 'Kazanılan SNR',
+    dash_snr: 'Kazanılan SUN',
     dash_pending: 'Bekleyen ödüller',
     dash_carbon: 'Karbon kredisi',
     dash_24h: 'Son 24 saat',
@@ -229,7 +229,7 @@ const I18N: Record<string, any> = {
     dash_claim_all: 'Hepsini topla',
     dash_claim: 'Topla',
     farm_lifetime: 'Ömür boyu kWh',
-    farm_pending: 'Bekleyen SNR',
+    farm_pending: 'Bekleyen SUN',
     farm_health: 'Düğüm sağlığı',
     farm_status_ok: 'Çevrimiçi',
     farm_status_warn: 'Düşük',
@@ -270,8 +270,8 @@ const I18N: Record<string, any> = {
     reg_done: 'Çiftlik kaydedildi',
 
     claim_title: 'Ödülleri topla',
-    claim_sub: 'Bekleyen SNR ve karbon kredilerini tek işlemde cüzdanına aktar.',
-    claim_snr: 'SNR hazır',
+    claim_sub: 'Bekleyen SUN ve karbon kredilerini tek işlemde cüzdanına aktar.',
+    claim_snr: 'SUN hazır',
     claim_carbon: 'Karbon kredisi',
     claim_gas: 'Gas',
     claim_gas_v: 'Sponsorlu',

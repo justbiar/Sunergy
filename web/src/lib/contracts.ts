@@ -1,20 +1,27 @@
 import { defineChain } from "viem";
 
-export const monadLocal = defineChain({
-  id: 31337,
-  name: "Sunergy Local",
-  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+export const monadTestnet = defineChain({
+  id: 10143,
+  name: "Monad Testnet",
+  nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
   rpcUrls: {
-    default: { http: ["http://127.0.0.1:8545"] },
+    default: { http: ["https://testnet-rpc.monad.xyz"] },
   },
+  blockExplorers: {
+    default: { name: "Monad Explorer", url: "https://testnet.monadexplorer.com" },
+  },
+  testnet: true,
 });
 
+// Filled in after `forge script script/Deploy.s.sol --rpc-url monad_testnet --broadcast`.
+// Until deployed these stay as zero addresses; on-chain reads return empty,
+// the solar simulation still drives the UI.
 export const CONTRACTS = {
-  farmRegistry: "0x5FbDB2315678afecb367f032d93F642f64180aa3" as `0x${string}`,
-  oracle:        "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9" as `0x${string}`,
-  rewards:       "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9" as `0x${string}`,
-  snrToken:      "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512" as `0x${string}`,
-  carbonCredit:  "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0" as `0x${string}`,
+  farmRegistry: (process.env.NEXT_PUBLIC_FARM_REGISTRY ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
+  oracle:       (process.env.NEXT_PUBLIC_ORACLE        ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
+  rewards:      (process.env.NEXT_PUBLIC_REWARDS       ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
+  snrToken:     (process.env.NEXT_PUBLIC_SUN_TOKEN     ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
+  carbonCredit: (process.env.NEXT_PUBLIC_CARBON        ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
 };
 
 export const FARM_REGISTRY_ABI = [

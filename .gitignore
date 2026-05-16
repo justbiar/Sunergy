@@ -6,3 +6,9 @@ cache/
 extracted/
 web/.next/
 web/node_modules/
+__pycache__/
+*.pyc
+edge/.venv/
+edge/edge_state.json
+edge/config.yaml
+broadcast/

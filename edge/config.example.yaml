@@ -1,0 +1,30 @@
+# Sunergy Edge Node — Raspberry Pi configuration
+
+farm:
+  # bytes32 farmId returned by FarmRegistry.registerFarm()
+  id: "0x0000000000000000000000000000000000000000000000000000000000000000"
+
+modbus:
+  host: 192.168.1.42       # inverter LAN IP
+  port: 502                # Modbus TCP default
+  unit_id: 1               # slave id (most inverters use 1)
+  # Energy register (lifetime energy, accumulating). SunSpec model 103 → 40093.
+  # pymodbus addresses are 0-based; subtract 1 from the SunSpec map (40093 → 40092).
+  energy_register: 40092
+  energy_register_count: 2 # 2 registers = uint32 (acc32 in SunSpec)
+  unit: "Wh"               # "Wh" or "kWh" — convert before submitting
+
+chain:
+  rpc: "https://testnet-rpc.monad.xyz"
+  chain_id: 10143
+  oracle_address: "0x0000000000000000000000000000000000000000"
+  # Edge node validator key — must hold VALIDATOR_ROLE on the oracle.
+  # Generate with: cast wallet new
+  private_key: "0x..."
+  # Optional: tx confirmation timeout
+  tx_timeout_s: 60
+
+polling:
+  modbus_poll_s: 30        # how often to sample the inverter
+  epoch_check_s: 30        # how often to check the oracle for phase transitions
+  log_level: "INFO"

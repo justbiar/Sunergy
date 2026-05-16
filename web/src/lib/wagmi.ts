@@ -1,9 +1,9 @@
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
-import { monadLocal } from "./contracts";
+import { monadTestnet } from "./contracts";
 
 export const config = getDefaultConfig({
   appName: "Sunergy",
-  projectId: "sunergy-local-dev",
-  chains: [monadLocal],
+  projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID ?? "sunergy-monad-testnet",
+  chains: [monadTestnet],
   ssr: true,
 });

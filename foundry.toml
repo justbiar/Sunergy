@@ -11,7 +11,7 @@ via_ir           = true
 runs = 1000
 
 [rpc_endpoints]
-monad_testnet = "${MONAD_TESTNET_RPC}"
+monad_testnet = "${MONAD_TESTNET_RPC:-https://testnet-rpc.monad.xyz}"
 
 [etherscan]
 monad_testnet = { key = "${MONAD_EXPLORER_API_KEY}", url = "${MONAD_EXPLORER_URL}" }
